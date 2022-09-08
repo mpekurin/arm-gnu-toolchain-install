@@ -1,2 +1,2 @@
-# arm-gnu-toolchain-install
-Bash script for installing the latest version of Arm GNU Toolchain
+# Arm GNU Toolchain Installer
+Bash script to download and install Arm GNU Toolchain as a Debian package via apt.
