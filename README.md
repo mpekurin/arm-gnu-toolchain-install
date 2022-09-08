@@ -1,2 +1,2 @@
 # Arm GNU Toolchain Installer
-Bash script to download and install Arm GNU Toolchain as a Debian package via apt.
+This scrip fetches available versions of the toolchain from [the download page](https://developer.arm.com/downloads/-/arm-gnu-toolchain-downloads) and allows you to select which one to install.
