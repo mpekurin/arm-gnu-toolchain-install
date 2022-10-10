@@ -47,6 +47,13 @@ PKG_ROOT="${PACKAGE}-${TARGET_PLATFORM}_${VERSION}_${HOST_PLATFORM_DEB}"
 PKG_NAME="${PACKAGE}-${TARGET_PLATFORM}_${VERSION}_${HOST_PLATFORM_DEB}.deb"
 TMP_DIR="/tmp/${PKG_ROOT}"
 
+# Configure a trap to remove temporary files on exit
+function clean_up {
+  rm -rf $TMP_DIR
+  rm -f /tmp/$PKG_NAME
+}
+trap clean_up EXIT
+
 # Download
 printf "Downloading %s...\n" $TAR_ROOT
 URL="https://developer.arm.com/-/media/files/downloads/gnu/${VERSION}/binrel/${TAR_NAME}"
