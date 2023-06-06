@@ -6,86 +6,85 @@
 # URL: https://github.com/mpekurin/arm-gnu-toolchain-install
 
 # Init
-PACKAGE="arm-gnu-toolchain"
-HOST_PLATFORM=$(uname -m)
-if [[ $HOST_PLATFORM != "x86_64" && $HOST_PLATFORM != "aarch64" ]]
+BASENAME="arm-gnu-toolchain"
+HOST_ARCH=$(uname -m)
+VERSION_PATTERN="\d+\.\d+\.\D+\d+"
+TARGET_PATTERN=".*"
+if [[ $HOST_ARCH != @(x86_64|aarch64) ]]
 then
-  printf "Arm GNU Toolchain is not available for %s platform.\n" $HOST_PLATFORM
+  printf "Arm GNU Toolchain is not available for $HOST_ARCH architecture.\n"
   exit 1
 fi
 
 # Fetch
 printf "Fetching... "
-if [[ $HOST_PLATFORM == "x86_64" ]]
-then
-  FILES=($(curl -s https://developer.arm.com/downloads/-/arm-gnu-toolchain-downloads \
-        | grep -Po "(?<=binrel/)${PACKAGE}.*${HOST_PLATFORM}.*(?=.tar.xz\?)" \
-        | grep -v "darwin"))
-  HOST_PLATFORM_DEB="amd64"
-else
-  FILES=($(curl -s https://developer.arm.com/downloads/-/arm-gnu-toolchain-downloads \
-        | grep -Po "(?<=binrel/)${PACKAGE}.*${HOST_PLATFORM}.*(?=.tar.xz\?)" \
-        | grep -v "x86_64"))
-  HOST_PLATFORM_DEB="arm64"
-fi
+URL="https://developer.arm.com/downloads/-/arm-gnu-toolchain-downloads"
+PATTERN="(?<=binrel\/)$BASENAME-$VERSION_PATTERN-$HOST_ARCH-$TARGET_PATTERN(?=\.tar\.xz\?)"
+PACKAGES=($(curl -s $URL | grep -Po $PATTERN))
 printf "Done\n"
 
-# Select a version
-for i in $(seq 0 $((${#FILES[*]} - 1)))
+# Select a package
+for i in ${!PACKAGES[@]}
 do
-  printf "[%2i] %s\n" $i ${FILES[i]}
+  printf "[%2i] %s\n" $i ${PACKAGES[i]}
 done
-while [[ $FILE_INDEX != +([0-9]) || $FILE_INDEX -ge ${#FILES[*]} ]]
+unset INDEX
+while [[ $INDEX != +([0-9]) || $INDEX -ge ${#PACKAGES[@]} ]]
 do
-  read -p "Please select a version to install: " FILE_INDEX
+  read -p "Please select a package to install: " INDEX
 done
-TAR_ROOT=${FILES[FILE_INDEX]}
-TAR_NAME="${TAR_ROOT}.tar.xz"
-VERSION=$(grep -oP "(?<=${PACKAGE}-).*?(?=-${HOST_PLATFORM})" <<< $TAR_ROOT)
-TARGET_PLATFORM=$(grep -oP "(?<=${HOST_PLATFORM}-).*" <<< $TAR_ROOT | tr -d _)
-PKG_ROOT="${PACKAGE}-${TARGET_PLATFORM}_${VERSION}_${HOST_PLATFORM_DEB}"
-PKG_NAME="${PACKAGE}-${TARGET_PLATFORM}_${VERSION}_${HOST_PLATFORM_DEB}.deb"
-TMP_DIR="/tmp/${PKG_ROOT}"
+PACKAGE=${PACKAGES[INDEX]}
+VERSION=$(grep -Po "(?<=$BASENAME-)$VERSION_PATTERN(?=-$HOST_ARCH)" <<< $PACKAGE)
+TARGET=$(grep -Po "(?<=$VERSION-$HOST_ARCH-)$TARGET_PATTERN" <<< $PACKAGE)
 
-# Configure a trap to remove temporary files on exit
+# Remove temporary files on exit
 function clean_up {
-  rm -rf $TMP_DIR
-  rm -f /tmp/$PKG_NAME
+  rm -r /tmp/$PACKAGE/
+  tput cnorm
 }
 trap clean_up EXIT
 
+tput civis
+
 # Download
-printf "Downloading %s...\n" $TAR_ROOT
-URL="https://developer.arm.com/-/media/files/downloads/gnu/${VERSION}/binrel/${TAR_NAME}"
-mkdir $TMP_DIR
-curl -L#o $TMP_DIR/$TAR_NAME $URL
+printf "Downloading $PACKAGE...\n"
+URL="https://developer.arm.com/-/media/files/downloads/gnu/$VERSION/binrel/$PACKAGE.tar.xz"
+mkdir /tmp/$PACKAGE/
+curl -L#o /tmp/$PACKAGE/$PACKAGE.tar.xz $URL
 
 # Extract
 printf "Extracting... "
-tar -xf $TMP_DIR/$TAR_NAME -C $TMP_DIR
-rm $TMP_DIR/$TAR_NAME
+mkdir /tmp/$PACKAGE/usr/
+tar -xf /tmp/$PACKAGE/$PACKAGE.tar.xz --strip-components 1 -C /tmp/$PACKAGE/usr/
+rm /tmp/$PACKAGE/usr/$VERSION-$HOST_ARCH-$TARGET-manifest.txt
+rm /tmp/$PACKAGE/$PACKAGE.tar.xz
 printf "Done\n"
 
 # Create a Debian package
-mv $TMP_DIR/$TAR_ROOT $TMP_DIR/usr
-mkdir $TMP_DIR/DEBIAN
-echo "Package: ${PACKAGE}-${TARGET_PLATFORM}"                        >  $TMP_DIR/DEBIAN/control
-echo "Version: ${VERSION}"                                           >> $TMP_DIR/DEBIAN/control
-echo "Section: devel"                                                >> $TMP_DIR/DEBIAN/control
-echo "Priority: optional"                                            >> $TMP_DIR/DEBIAN/control
-echo "Architecture: ${HOST_PLATFORM_DEB}"                            >> $TMP_DIR/DEBIAN/control
-echo "Depends: libncursesw5"                                         >> $TMP_DIR/DEBIAN/control
-if [[ $TARGET_PLATFORM == "arm-none-eabi" ]]
+printf "Preparing necessary files... "
+[[ $HOST_ARCH ==  x86_64 ]] && HOST_ARCH_DEB="amd64"
+[[ $HOST_ARCH == aarch64 ]] && HOST_ARCH_DEB="arm64"
+SIZE=$(du -s /tmp/$PACKAGE/usr/ | cut -f1)
+mkdir /tmp/$PACKAGE/DEBIAN/
+echo "Package: $BASENAME-${TARGET//_}"                        >  /tmp/$PACKAGE/DEBIAN/control
+echo "Version: $VERSION"                                      >> /tmp/$PACKAGE/DEBIAN/control
+echo "Section: devel"                                         >> /tmp/$PACKAGE/DEBIAN/control
+echo "Priority: optional"                                     >> /tmp/$PACKAGE/DEBIAN/control
+echo "Architecture: $HOST_ARCH_DEB"                           >> /tmp/$PACKAGE/DEBIAN/control
+echo "Depends: libncursesw5"                                  >> /tmp/$PACKAGE/DEBIAN/control
+if [[ $TARGET == "arm-none-eabi" ]]
 then
-  echo "Conflicts: gcc-arm-none-eabi, binutils-arm-none-eabi"        >> $TMP_DIR/DEBIAN/control
+  echo "Conflicts: gcc-arm-none-eabi, binutils-arm-none-eabi" >> /tmp/$PACKAGE/DEBIAN/control
 fi
-echo "Installed-Size: $(du -s ${TMP_DIR}/usr | cut -f1)"             >> $TMP_DIR/DEBIAN/control
-echo "Maintainer: ${USER}"                                           >> $TMP_DIR/DEBIAN/control
-echo "Description: Arm GNU Toolchain for ${TARGET_PLATFORM} targets" >> $TMP_DIR/DEBIAN/control
-dpkg-deb --root-owner-group --build $TMP_DIR /tmp/$PKG_NAME
-rm -r $TMP_DIR
+echo "Installed-Size: $SIZE"                                  >> /tmp/$PACKAGE/DEBIAN/control
+echo "Maintainer: $USER"                                      >> /tmp/$PACKAGE/DEBIAN/control
+echo "Description: Arm GNU Toolchain for $TARGET targets"     >> /tmp/$PACKAGE/DEBIAN/control
+dpkg-deb -bz0 /tmp/$PACKAGE/ /tmp/$PACKAGE/$PACKAGE.deb > /dev/null
+rm -r /tmp/$PACKAGE/usr/
+printf "Done\n"
+
+tput cnorm
 
 # Install
-echo "Installing..."
-sudo apt install /tmp/$PKG_NAME
-rm /tmp/$PKG_NAME
+printf "Installing...\n"
+sudo apt install /tmp/$PACKAGE/$PACKAGE.deb
