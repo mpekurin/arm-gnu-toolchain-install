@@ -120,4 +120,4 @@ tput cnorm
 
 # Install
 printf "Installing...\n"
-sudo apt install /tmp/$PACKAGE/$PACKAGE.deb
+sudo apt -y install /tmp/$PACKAGE/$PACKAGE.deb
