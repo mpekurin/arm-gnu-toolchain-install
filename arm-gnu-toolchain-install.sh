@@ -1,44 +1,77 @@
 #!/bin/bash
 
-# Arm GNU Toolchain Installer
+# Arm GNU Toolchain Install
 # Copyright (c) 2022 Maxim Pekurin
 # SPDX-License-Identifier: MIT
 # URL: https://github.com/mpekurin/arm-gnu-toolchain-install
 
+help ()
+{
+  echo "Download and install Arm GNU Toolchain as a Debian package."
+  echo
+  echo "Usage: bash $(basename $0) [options...]"
+  echo "  -h           show this help and exit"
+  echo "  -v <pattern> use the pattern to filter the packages by their version"
+  echo "  -t <pattern> use the pattern to filter the packages by their target"
+  echo "  -l           install the latest version available"
+}
+
 # Init
 BASENAME="arm-gnu-toolchain"
 HOST_ARCH=$(uname -m)
-VERSION_PATTERN="\d+\.\d+\.\D+\d+"
-TARGET_PATTERN=".*"
+version_pattern="\d+\.\d+\.\D+\d+"
+target_pattern=".*"
 if [[ $HOST_ARCH != @(x86_64|aarch64) ]]
 then
-  printf "Arm GNU Toolchain is not available for $HOST_ARCH architecture.\n"
+  printf "Arm GNU Toolchain is not available for $HOST_ARCH architecture\n"
   exit 1
 fi
+
+# Process options
+unset INSTALL_LATEST
+while getopts ":hv:t:l" flag
+do
+  case $flag in
+    h) help && exit 0;;
+    v) version_pattern=$OPTARG;;
+    t) target_pattern=$OPTARG;;
+    l) INSTALL_LATEST=1;;
+  esac
+done
 
 # Fetch
 printf "Fetching... "
 URL="https://developer.arm.com/downloads/-/arm-gnu-toolchain-downloads"
-PATTERN="(?<=binrel\/)$BASENAME-$VERSION_PATTERN-$HOST_ARCH-$TARGET_PATTERN(?=\.tar\.xz\?)"
-PACKAGES=($(curl -s $URL | grep -Po $PATTERN))
+PATTERN="(?<=binrel\/)$BASENAME-$version_pattern-$HOST_ARCH-$target_pattern(?=\.tar\.xz\?)"
+PACKAGES=($(curl -s $URL | grep -Po $PATTERN | grep -v "darwin"))
 printf "Done\n"
 
 # Select a package
-for i in ${!PACKAGES[@]}
-do
-  printf "[%2i] %s\n" $i ${PACKAGES[i]}
-done
-unset INDEX
-while [[ $INDEX != +([0-9]) || $INDEX -ge ${#PACKAGES[@]} ]]
-do
-  read -p "Please select a package to install: " INDEX
-done
-PACKAGE=${PACKAGES[INDEX]}
-VERSION=$(grep -Po "(?<=$BASENAME-)$VERSION_PATTERN(?=-$HOST_ARCH)" <<< $PACKAGE)
-TARGET=$(grep -Po "(?<=$VERSION-$HOST_ARCH-)$TARGET_PATTERN" <<< $PACKAGE)
+if [[ ${#PACKAGES[@]} -eq 0 ]]
+then
+  printf "Cannot find a package that matches the pattern: $BASENAME-$version_pattern-$HOST_ARCH-$target_pattern\n"
+  exit 1
+elif [[ $INSTALL_LATEST -eq 1 ]]
+then
+  PACKAGE=${PACKAGES[0]}
+else
+  for i in ${!PACKAGES[@]}
+  do
+    printf "[%2i] %s\n" $i ${PACKAGES[i]}
+  done
+  unset i
+  while [[ $i != +([0-9]) || $i -ge ${#PACKAGES[@]} ]]
+  do
+    read -p "Please select a package to install: " i
+  done
+  PACKAGE=${PACKAGES[i]}
+fi
+VERSION=$(grep -Po "(?<=$BASENAME-)$version_pattern(?=-$HOST_ARCH)" <<< $PACKAGE)
+TARGET=$(grep -Po "(?<=$VERSION-$HOST_ARCH-)$target_pattern" <<< $PACKAGE)
 
 # Remove temporary files on exit
-function clean_up {
+clean_up ()
+{
   rm -r /tmp/$PACKAGE/
   tput cnorm
 }
