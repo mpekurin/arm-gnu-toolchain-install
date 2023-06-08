@@ -87,9 +87,9 @@ curl -L#o /tmp/$PACKAGE/$PACKAGE.tar.xz $URL
 
 # Extract
 printf "Extracting... "
-mkdir /tmp/$PACKAGE/usr/
-tar -xf /tmp/$PACKAGE/$PACKAGE.tar.xz --strip-components 1 -C /tmp/$PACKAGE/usr/
-rm /tmp/$PACKAGE/usr/$VERSION-$HOST_ARCH-$TARGET-manifest.txt
+mkdir -p /tmp/$PACKAGE/usr/local/
+tar -xf /tmp/$PACKAGE/$PACKAGE.tar.xz --strip-components 1 -C /tmp/$PACKAGE/usr/local/
+rm /tmp/$PACKAGE/usr/local/$VERSION-$HOST_ARCH-$TARGET-manifest.txt
 rm /tmp/$PACKAGE/$PACKAGE.tar.xz
 printf "Done\n"
 
@@ -97,11 +97,6 @@ printf "Done\n"
 printf "Preparing necessary files... "
 [[ $HOST_ARCH ==  x86_64 ]] && HOST_ARCH_DEB="amd64"
 [[ $HOST_ARCH == aarch64 ]] && HOST_ARCH_DEB="arm64"
-conflicts="gdb"
-if [[ $TARGET == "arm-none-eabi" ]]
-then
-  conflicts=$conflicts", gcc-arm-none-eabi, binutils-arm-none-eabi"
-fi
 SIZE=$(du -s /tmp/$PACKAGE/usr/ | cut -f1)
 mkdir /tmp/$PACKAGE/DEBIAN/
 echo "Package: $BASENAME-${TARGET//_}"                    >  /tmp/$PACKAGE/DEBIAN/control
@@ -110,7 +105,6 @@ echo "Section: devel"                                     >> /tmp/$PACKAGE/DEBIA
 echo "Priority: optional"                                 >> /tmp/$PACKAGE/DEBIAN/control
 echo "Architecture: $HOST_ARCH_DEB"                       >> /tmp/$PACKAGE/DEBIAN/control
 echo "Depends: libncursesw5"                              >> /tmp/$PACKAGE/DEBIAN/control
-echo "Conflicts: $conflicts"                              >> /tmp/$PACKAGE/DEBIAN/control
 echo "Installed-Size: $SIZE"                              >> /tmp/$PACKAGE/DEBIAN/control
 echo "Maintainer: $USER"                                  >> /tmp/$PACKAGE/DEBIAN/control
 echo "Description: Arm GNU Toolchain for $TARGET targets" >> /tmp/$PACKAGE/DEBIAN/control
