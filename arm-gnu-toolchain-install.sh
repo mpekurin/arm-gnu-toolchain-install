@@ -97,21 +97,23 @@ printf "Done\n"
 printf "Preparing necessary files... "
 [[ $HOST_ARCH ==  x86_64 ]] && HOST_ARCH_DEB="amd64"
 [[ $HOST_ARCH == aarch64 ]] && HOST_ARCH_DEB="arm64"
-SIZE=$(du -s /tmp/$PACKAGE/usr/ | cut -f1)
-mkdir /tmp/$PACKAGE/DEBIAN/
-echo "Package: $BASENAME-${TARGET//_}"                        >  /tmp/$PACKAGE/DEBIAN/control
-echo "Version: $VERSION"                                      >> /tmp/$PACKAGE/DEBIAN/control
-echo "Section: devel"                                         >> /tmp/$PACKAGE/DEBIAN/control
-echo "Priority: optional"                                     >> /tmp/$PACKAGE/DEBIAN/control
-echo "Architecture: $HOST_ARCH_DEB"                           >> /tmp/$PACKAGE/DEBIAN/control
-echo "Depends: libncursesw5"                                  >> /tmp/$PACKAGE/DEBIAN/control
+conflicts="gdb"
 if [[ $TARGET == "arm-none-eabi" ]]
 then
-  echo "Conflicts: gcc-arm-none-eabi, binutils-arm-none-eabi" >> /tmp/$PACKAGE/DEBIAN/control
+  conflicts=$conflicts", gcc-arm-none-eabi, binutils-arm-none-eabi"
 fi
-echo "Installed-Size: $SIZE"                                  >> /tmp/$PACKAGE/DEBIAN/control
-echo "Maintainer: $USER"                                      >> /tmp/$PACKAGE/DEBIAN/control
-echo "Description: Arm GNU Toolchain for $TARGET targets"     >> /tmp/$PACKAGE/DEBIAN/control
+SIZE=$(du -s /tmp/$PACKAGE/usr/ | cut -f1)
+mkdir /tmp/$PACKAGE/DEBIAN/
+echo "Package: $BASENAME-${TARGET//_}"                    >  /tmp/$PACKAGE/DEBIAN/control
+echo "Version: $VERSION"                                  >> /tmp/$PACKAGE/DEBIAN/control
+echo "Section: devel"                                     >> /tmp/$PACKAGE/DEBIAN/control
+echo "Priority: optional"                                 >> /tmp/$PACKAGE/DEBIAN/control
+echo "Architecture: $HOST_ARCH_DEB"                       >> /tmp/$PACKAGE/DEBIAN/control
+echo "Depends: libncursesw5"                              >> /tmp/$PACKAGE/DEBIAN/control
+echo "Conflicts: $conflicts"                              >> /tmp/$PACKAGE/DEBIAN/control
+echo "Installed-Size: $SIZE"                              >> /tmp/$PACKAGE/DEBIAN/control
+echo "Maintainer: $USER"                                  >> /tmp/$PACKAGE/DEBIAN/control
+echo "Description: Arm GNU Toolchain for $TARGET targets" >> /tmp/$PACKAGE/DEBIAN/control
 dpkg-deb -bz0 /tmp/$PACKAGE/ /tmp/$PACKAGE/$PACKAGE.deb > /dev/null
 rm -r /tmp/$PACKAGE/usr/
 printf "Done\n"
