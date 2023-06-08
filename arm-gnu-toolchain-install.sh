@@ -41,6 +41,7 @@ done
 
 # Create temp dir
 TMP_DIR=$(mktemp -d)
+chmod +rwx $TMP_DIR
 
 # Clean up on exit
 trap 'rm -r $TMP_DIR/ && tput cnorm' EXIT
