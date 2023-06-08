@@ -39,6 +39,12 @@ do
   esac
 done
 
+# Create temp dir
+TMP_DIR=$(mktemp -d)
+
+# Clean up on exit
+trap 'rm -r $TMP_DIR/ && tput cnorm' EXIT
+
 # Fetch
 printf "Fetching... "
 URL="https://developer.arm.com/downloads/-/arm-gnu-toolchain-downloads"
@@ -69,51 +75,44 @@ fi
 VERSION=$(grep -Po "(?<=$BASENAME-)$version_pattern(?=-$HOST_ARCH)" <<< $PACKAGE)
 TARGET=$(grep -Po "(?<=$VERSION-$HOST_ARCH-)$target_pattern" <<< $PACKAGE)
 
-# Remove temporary files on exit
-clean_up ()
-{
-  rm -r /tmp/$PACKAGE/
-  tput cnorm
-}
-trap clean_up EXIT
-
 tput civis
 
 # Download
 printf "Downloading $PACKAGE...\n"
 URL="https://developer.arm.com/-/media/files/downloads/gnu/$VERSION/binrel/$PACKAGE.tar.xz"
-mkdir /tmp/$PACKAGE/
-curl -L#o /tmp/$PACKAGE/$PACKAGE.tar.xz $URL
+curl -L#o $TMP_DIR/$PACKAGE.tar.xz $URL
 
 # Extract
 printf "Extracting... "
-mkdir -p /tmp/$PACKAGE/usr/local/
-tar -xf /tmp/$PACKAGE/$PACKAGE.tar.xz --strip-components 1 -C /tmp/$PACKAGE/usr/local/
-rm /tmp/$PACKAGE/usr/local/$VERSION-$HOST_ARCH-$TARGET-manifest.txt
-rm /tmp/$PACKAGE/$PACKAGE.tar.xz
+# The toolchain will be installed to /usr/local/ to avoid conflicts with gdb and some other packages.
+# This is probably not good but whatever.
+mkdir -p $TMP_DIR/usr/local/
+tar -xf $TMP_DIR/$PACKAGE.tar.xz --strip-components 1 -C $TMP_DIR/usr/local/
+rm $TMP_DIR/usr/local/$VERSION-$HOST_ARCH-$TARGET-manifest.txt
+rm $TMP_DIR/$PACKAGE.tar.xz
 printf "Done\n"
 
 # Create a Debian package
 printf "Preparing necessary files... "
 [[ $HOST_ARCH ==  x86_64 ]] && HOST_ARCH_DEB="amd64"
 [[ $HOST_ARCH == aarch64 ]] && HOST_ARCH_DEB="arm64"
-SIZE=$(du -s /tmp/$PACKAGE/usr/ | cut -f1)
-mkdir /tmp/$PACKAGE/DEBIAN/
-echo "Package: $BASENAME-${TARGET//_}"                    >  /tmp/$PACKAGE/DEBIAN/control
-echo "Version: $VERSION"                                  >> /tmp/$PACKAGE/DEBIAN/control
-echo "Section: devel"                                     >> /tmp/$PACKAGE/DEBIAN/control
-echo "Priority: optional"                                 >> /tmp/$PACKAGE/DEBIAN/control
-echo "Architecture: $HOST_ARCH_DEB"                       >> /tmp/$PACKAGE/DEBIAN/control
-echo "Depends: libncursesw5"                              >> /tmp/$PACKAGE/DEBIAN/control
-echo "Installed-Size: $SIZE"                              >> /tmp/$PACKAGE/DEBIAN/control
-echo "Maintainer: $USER"                                  >> /tmp/$PACKAGE/DEBIAN/control
-echo "Description: Arm GNU Toolchain for $TARGET targets" >> /tmp/$PACKAGE/DEBIAN/control
-dpkg-deb -bz0 /tmp/$PACKAGE/ /tmp/$PACKAGE/$PACKAGE.deb > /dev/null
-rm -r /tmp/$PACKAGE/usr/
+SIZE=$(du -s $TMP_DIR | cut -f1)
+mkdir $TMP_DIR/DEBIAN/
+echo "Package: $BASENAME-${TARGET//_}"                    >  $TMP_DIR/DEBIAN/control
+echo "Version: $VERSION"                                  >> $TMP_DIR/DEBIAN/control
+echo "Section: devel"                                     >> $TMP_DIR/DEBIAN/control
+echo "Priority: optional"                                 >> $TMP_DIR/DEBIAN/control
+echo "Architecture: $HOST_ARCH_DEB"                       >> $TMP_DIR/DEBIAN/control
+echo "Depends: libncursesw5"                              >> $TMP_DIR/DEBIAN/control
+echo "Installed-Size: $SIZE"                              >> $TMP_DIR/DEBIAN/control
+echo "Maintainer: $USER"                                  >> $TMP_DIR/DEBIAN/control
+echo "Description: Arm GNU Toolchain for $TARGET targets" >> $TMP_DIR/DEBIAN/control
+dpkg-deb -bz0 $TMP_DIR/ $TMP_DIR/$PACKAGE.deb > /dev/null
+rm -r $TMP_DIR/usr/
 printf "Done\n"
 
 tput cnorm
 
 # Install
 printf "Installing...\n"
-sudo apt -y install /tmp/$PACKAGE/$PACKAGE.deb
+sudo apt -y install $TMP_DIR/$PACKAGE.deb
