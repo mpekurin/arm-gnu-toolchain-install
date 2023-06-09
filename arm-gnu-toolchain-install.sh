@@ -116,4 +116,4 @@ tput cnorm
 
 # Install
 printf "Installing...\n"
-sudo apt -y install $TMP_DIR/$PACKAGE.deb
+sudo apt -y --allow-downgrades install $TMP_DIR/$PACKAGE.deb
