@@ -90,6 +90,7 @@ printf "Extracting... "
 mkdir -p $TMP_DIR/usr/local/
 tar -xf $TMP_DIR/$PACKAGE.tar.xz --strip-components 1 -C $TMP_DIR/usr/local/
 rm $TMP_DIR/usr/local/$VERSION-$HOST_ARCH-$TARGET-manifest.txt
+rm $TMP_DIR/usr/local/license.txt
 rm $TMP_DIR/$PACKAGE.tar.xz
 printf "Done\n"
 
