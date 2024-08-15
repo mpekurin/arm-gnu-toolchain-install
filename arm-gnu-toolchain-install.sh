@@ -104,7 +104,6 @@ echo "Version: $VERSION"                                  >> $TMP_DIR/DEBIAN/con
 echo "Section: devel"                                     >> $TMP_DIR/DEBIAN/control
 echo "Priority: optional"                                 >> $TMP_DIR/DEBIAN/control
 echo "Architecture: $HOST_ARCH_DEB"                       >> $TMP_DIR/DEBIAN/control
-echo "Depends: libncursesw5"                              >> $TMP_DIR/DEBIAN/control
 echo "Installed-Size: $SIZE"                              >> $TMP_DIR/DEBIAN/control
 echo "Maintainer: $USER"                                  >> $TMP_DIR/DEBIAN/control
 echo "Description: Arm GNU Toolchain for $TARGET targets" >> $TMP_DIR/DEBIAN/control
