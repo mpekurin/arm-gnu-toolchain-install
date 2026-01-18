@@ -35,7 +35,7 @@ cd arm-gnu-toolchain-install/
 Or use the process substitution:
 
 ```bash
-bash <(curl -s https://raw.githubusercontent.com/mpekurin/arm-gnu-toolchain-install/main/arm-gnu-toolchain-install.sh) [options...]
+bash <(curl -s https://raw.githubusercontent.com/mpekurin/arm-gnu-toolchain-install/refs/heads/main/arm-gnu-toolchain-install.sh) [options...]
 ```
 
 ### Options
