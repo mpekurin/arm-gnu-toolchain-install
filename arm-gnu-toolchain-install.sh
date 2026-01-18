@@ -49,7 +49,7 @@ trap 'rm -r $TMP_DIR/ && tput cnorm' EXIT
 # Fetch
 printf "Fetching... "
 URL="https://developer.arm.com/downloads/-/arm-gnu-toolchain-downloads"
-PATTERN="(?<=binrel\/)$BASENAME-$version_pattern-$HOST_ARCH-$target_pattern(?=\.tar\.xz\?)"
+PATTERN="(?<=binrel\/)$BASENAME-$version_pattern-$HOST_ARCH-$target_pattern(?=\.tar\.xz[?>'\"])"
 PACKAGES=($(curl -s $URL | grep -Po $PATTERN | grep -v "darwin"))
 printf "Done\n"
 
@@ -86,7 +86,6 @@ curl -L#o $TMP_DIR/$PACKAGE.tar.xz $URL
 # Extract
 printf "Extracting... "
 # The toolchain will be installed to /usr/local/ to avoid conflicts with gdb and some other packages.
-# This is probably not good but whatever.
 mkdir -p $TMP_DIR/usr/local/
 tar -xf $TMP_DIR/$PACKAGE.tar.xz --strip-components 1 -C $TMP_DIR/usr/local/
 rm $TMP_DIR/usr/local/*.txt
